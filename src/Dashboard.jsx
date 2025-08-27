@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { ExternalLink, ArrowLeft, MapPin, Calendar, Code, User, Star, Sparkles, Heart } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import API_URL from "./config";
 
 // ===== Skills & Roles from ProfileSetUp.jsx =====
 const csSkills = [
@@ -43,7 +44,7 @@ export default function Dashboard() {
 
   // Fetch all posted profiles for feed
   const fetchPostedProfiles = () => {
-    fetch("http://localhost:3000/profile/posted/all")
+    fetch(`${API_URL}/profile/posted/all`)
       .then((res) => res.json())
       .then((data) => {
         // Filter out my own profile from the feed
@@ -72,7 +73,7 @@ export default function Dashboard() {
         headers['Authorization'] = `Bearer ${token}`;
       }
       
-      const response = await fetch("http://localhost:3000/profile/me", {
+      const response = await fetch(`${API_URL}/profile/me`, {
         method: 'GET',
         headers: headers,
         credentials: 'include', // Include cookies if using session-based auth
@@ -148,7 +149,7 @@ export default function Dashboard() {
     }
 
     try {
-      const response = await fetch(`http://localhost:3000/profile/${myProfile._id}/post`, {
+      const response = await fetch(`${API_URL}/profile/${myProfile._id}/post`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -178,7 +179,7 @@ export default function Dashboard() {
     }
 
     try {
-      const response = await fetch(`http://localhost:3000/profile/${myProfile._id}/unpost`, {
+      const response = await fetch(`${API_URL}/profile/${myProfile._id}/unpost`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',

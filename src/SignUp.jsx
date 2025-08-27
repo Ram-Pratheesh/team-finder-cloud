@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import API_URL from "./config";
 
 function SignupPage() {
   const navigate = useNavigate();
@@ -34,7 +35,7 @@ function SignupPage() {
   if (Object.keys(v).length) return;
 
   try {
-    const response = await fetch("http://localhost:3000/auth/signup", {
+    const response = await fetch(`${API_URL}/auth/signup`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

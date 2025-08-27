@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-
+import API_URL from "./config";
 const ProfileSetUp = () => {
   const navigate = useNavigate();
 
@@ -99,7 +99,7 @@ const ProfileSetUp = () => {
     const token = sessionStorage.getItem("token"); // ✅ get token
     console.log("Token at ProfileSetUp:", token);
 
-    const response = await fetch("http://localhost:3000/profile/setup", {
+    const response = await fetch(`${API_URL}/profile/setup`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
