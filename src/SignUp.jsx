@@ -67,7 +67,7 @@ function SignupPage() {
           Welcome to
           <br />
           <span className="text-purple-400 font-extrabold tracking-wide">
-            SIH-Team Finder 🚀
+            SIH-Team Finder
           </span>
         </h1>
 

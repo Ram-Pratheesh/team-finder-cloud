@@ -1,16 +1,14 @@
 // src/pages/Dashboard.jsx
 import React, { useState, useEffect } from "react";
-import { ExternalLink, ArrowLeft, MapPin, Calendar, Code, User, Star, Sparkles, Heart } from "lucide-react";
+import { ExternalLink, ArrowLeft, MapPin, Calendar, Code, User, Star, Sparkles, Heart, Loader as LoaderIcon } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import API_URL from "./config";
 
-// ===== Skills & Roles from ProfileSetUp.jsx =====
 const csSkills = [
   "React","JavaScript","HTML","CSS","Node.js","Python","Java","C++","C#",
   "TypeScript","Angular","Vue.js","PHP","Ruby","Go","Rust","Swift","Kotlin",
   "Solidity","Blockchain","Machine Learning","Data Science","DevOps","AWS","Docker","Kubernetes"
 ];
-
 const roles = [
   "Frontend Developer",
   "Backend Developer",
@@ -29,6 +27,14 @@ const roles = [
   "Other"
 ];
 
+// Loader Component using Lucide Loader
+const Loader = () => (
+  <div className="flex flex-col items-center justify-center py-10" aria-label="Loading...">
+    <LoaderIcon className="animate-spin text-[#A259FF]" size={48} strokeWidth={3} />
+    <span className="mt-4 text-[#B3B3B3] text-base font-medium">Loading...</span>
+  </div>
+);
+
 export default function Dashboard() {
   const [usersData, setUsersData] = useState([]);
   const [myProfile, setMyProfile] = useState(null);
@@ -38,62 +44,56 @@ export default function Dashboard() {
   const [searchRole, setSearchRole] = useState("");
   const [activeTab, setActiveTab] = useState("feed");
   const [loading, setLoading] = useState(false);
-
   const navigate = useNavigate();
-  const loggedInEmail = sessionStorage.getItem("email"); // get logged-in email
+  const loggedInEmail = sessionStorage.getItem("email");
 
   // Fetch all posted profiles for feed
   const fetchPostedProfiles = () => {
+    setLoading(true);
     fetch(`${API_URL}/profile/posted/all`)
       .then((res) => res.json())
       .then((data) => {
-        // Filter out my own profile from the feed
         const filteredProfiles = data.profiles?.filter(
           (user) => user.collegeMail !== loggedInEmail
         ) || [];
         setUsersData(filteredProfiles);
+        setLoading(false);
       })
-      .catch((err) => console.error("Failed to fetch posted profiles:", err));
+      .catch((err) => {
+        console.error("Failed to fetch posted profiles:", err);
+        setLoading(false);
+      });
   };
 
   // Fetch my profile data - UPDATED VERSION WITH AUTH
   const fetchMyProfile = async () => {
     setLoading(true);
-    
     try {
-      // Get the token from sessionStorage (or wherever you store it)
       const token = sessionStorage.getItem("token") || sessionStorage.getItem("authToken");
-      
       const headers = {
         'Content-Type': 'application/json',
       };
-      
-      // Add authorization header if token exists
+
       if (token) {
         headers['Authorization'] = `Bearer ${token}`;
       }
-      
+
       const response = await fetch(`${API_URL}/profile/me`, {
         method: 'GET',
         headers: headers,
-        credentials: 'include', // Include cookies if using session-based auth
+        credentials: 'include',
       });
-      
-      console.log("Response status:", response.status);
-      
+
       if (response.ok) {
         const data = await response.json();
-        console.log("Fetched profile:", data);
         setMyProfile(data);
-        
-        // Store the userId if not already stored
+
         if (data._id && !sessionStorage.getItem("userId")) {
           sessionStorage.setItem("userId", data._id);
         }
       } else {
         console.error("Failed to fetch profile:", response.status);
         if (response.status === 401) {
-          console.error("Unauthorized - check if user is logged in and token is valid");
           // Optionally redirect to login page
           // navigate("/login");
         }
@@ -103,16 +103,16 @@ export default function Dashboard() {
       console.error("Error fetching profile:", err);
       setMyProfile(null);
     }
-    
     setLoading(false);
   };
 
   useEffect(() => {
-    fetchPostedProfiles(); // Load posted profiles for feed
-    fetchMyProfile(); // Load my profile data
+    fetchPostedProfiles();
+    fetchMyProfile();
+    // eslint-disable-next-line
   }, [loggedInEmail]);
 
-  /** Filtered feed */
+  // Filtered feed
   const filteredUsers = usersData.filter((user) => {
     const matchesUsername = user.name
       ?.toLowerCase()
@@ -128,7 +128,7 @@ export default function Dashboard() {
     return matchesUsername && matchesSkill && matchesRole;
   });
 
-  /** Handlers */
+  // Handlers
   const handleViewProfile = (userId, username) => {
     const selectedUser = usersData.find(user => user._id === userId);
     if (selectedUser) {
@@ -136,18 +136,15 @@ export default function Dashboard() {
       setActiveTab("userProfile");
     }
   };
-  
   const handleBackToFeed = () => {
     setSelectedUserProfile(null);
     setActiveTab("feed");
   };
-  
   const handlePostProfile = async () => {
     if (!myProfile?._id) {
       alert("Profile not found!");
       return;
     }
-
     try {
       const response = await fetch(`${API_URL}/profile/${myProfile._id}/post`, {
         method: 'PATCH',
@@ -155,11 +152,10 @@ export default function Dashboard() {
           'Content-Type': 'application/json',
         },
       });
-
       if (response.ok) {
         const updatedProfile = await response.json();
         setMyProfile(updatedProfile);
-        fetchPostedProfiles(); // Refresh the feed
+        fetchPostedProfiles();
         alert("Profile posted successfully!");
       } else {
         alert("Failed to post profile");
@@ -169,15 +165,12 @@ export default function Dashboard() {
       alert("Error posting profile");
     }
   };
-
   const handleEditProfile = () => navigate("/ProfileSetUp");
-  
   const handleDeleteProfile = async () => {
     if (!myProfile?._id) {
       alert("Profile not found!");
       return;
     }
-
     try {
       const response = await fetch(`${API_URL}/profile/${myProfile._id}/unpost`, {
         method: 'PATCH',
@@ -185,11 +178,10 @@ export default function Dashboard() {
           'Content-Type': 'application/json',
         },
       });
-
       if (response.ok) {
         const updatedProfile = await response.json();
         setMyProfile(updatedProfile);
-        fetchPostedProfiles(); // Refresh the feed to remove my profile if it was there
+        fetchPostedProfiles();
         alert("Profile removed from public feed!");
       } else {
         alert("Failed to remove profile from feed");
@@ -203,7 +195,7 @@ export default function Dashboard() {
   // Enhanced Profile Card Component
   const ProfileCard = ({ user, index }) => {
     return (
-      <div 
+      <div
         className="group bg-[#1A1A1A] border border-[#333] rounded-xl p-6 hover:border-[#A259FF]/50 hover:bg-[#1F1F1F] transition-all duration-300"
       >
         {/* Header Section */}
@@ -212,11 +204,10 @@ export default function Dashboard() {
           <div className="w-14 h-14 rounded-full bg-gradient-to-r from-[#A259FF] to-[#8B3EF2] flex items-center justify-center text-lg font-bold text-white shrink-0">
             {user.name?.charAt(0)?.toUpperCase() || "U"}
           </div>
-          
           {/* User Info */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between">
-              <h3 
+              <h3
                 className="text-lg font-semibold text-white cursor-pointer hover:text-[#A259FF] transition-colors flex items-center gap-2 truncate"
                 onClick={() => handleViewProfile(user._id, user.name)}
               >
@@ -229,14 +220,12 @@ export default function Dashboard() {
             </p>
           </div>
         </div>
-
         {/* Bio Section */}
         <div className="mb-4">
           <p className="text-[#B3B3B3] text-sm leading-relaxed line-clamp-2">
             {user.bio || "Passionate developer ready to collaborate on exciting projects!"}
           </p>
         </div>
-
         {/* Roles Section */}
         <div className="mb-4">
           <h4 className="text-xs font-medium text-[#888] mb-2 flex items-center gap-1">
@@ -259,7 +248,6 @@ export default function Dashboard() {
             )}
           </div>
         </div>
-
         {/* Tech Stack Section */}
         <div className="mb-6">
           <h4 className="text-xs font-medium text-[#888] mb-2 flex items-center gap-1">
@@ -282,7 +270,6 @@ export default function Dashboard() {
             )}
           </div>
         </div>
-
         {/* Action Button */}
         <div className="flex justify-end">
           <button
@@ -308,7 +295,6 @@ export default function Dashboard() {
           overflow: hidden;
         }
       `}</style>
-
       {/* Team Branding Header - Simple text at the top */}
       <div className="w-full bg-[#1A1A1A] border-b border-[#333] py-3">
         <div className="max-w-5xl mx-auto px-4">
@@ -319,7 +305,6 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
-
       {/* Tabs - Hide when viewing user profile */}
       {activeTab !== "userProfile" && (
         <div className="flex gap-2 mb-8 p-1 rounded-lg mt-6 mx-auto max-w-2xl w-full bg-[#1A1A1A]">
@@ -348,8 +333,11 @@ export default function Dashboard() {
 
       <div className="flex justify-center items-start px-4 flex-1 w-full">
         <div className="w-full max-w-5xl">
+          {/* Loader for feed/my-profile fetch */}
+          {loading && <Loader />}
+
           {/* FEED TAB */}
-          {activeTab === "feed" && (
+          {!loading && activeTab === "feed" && (
             <div>
               {/* Search filters */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-8 p-6 rounded-xl bg-[#1A1A1A]">
@@ -366,7 +354,6 @@ export default function Dashboard() {
                     className="bg-[#0D0D0D] border border-[#333] text-white p-3 rounded-lg w-full focus:border-[#A259FF] focus:ring-1 focus:ring-[#A259FF] transition-all duration-300"
                   />
                 </div>
-
                 {/* Skill filter with datalist */}
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-[#B3B3B3]">
@@ -386,7 +373,6 @@ export default function Dashboard() {
                     ))}
                   </datalist>
                 </div>
-
                 {/* Role filter with datalist */}
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-[#B3B3B3]">
@@ -407,7 +393,6 @@ export default function Dashboard() {
                   </datalist>
                 </div>
               </div>
-
               {/* Feed cards */}
               <div className="space-y-6">
                 {filteredUsers.length === 0 ? (
@@ -426,18 +411,10 @@ export default function Dashboard() {
               </div>
             </div>
           )}
-
           {/* MY PROFILE TAB */}
-          {activeTab === "profile" && (
+          {!loading && activeTab === "profile" && (
             <div>
-              {loading ? (
-                <div className="p-6 rounded-xl border border-[#333] bg-[#1A1A1A] text-center">
-                  <div className="flex items-center justify-center gap-3">
-                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#A259FF]"></div>
-                    <p className="text-[#B3B3B3]">Loading your profile...</p>
-                  </div>
-                </div>
-              ) : myProfile ? (
+              {myProfile ? (
                 <div className="p-6 rounded-xl border border-[#333] bg-[#1A1A1A] space-y-4">
                   <div className="flex items-center justify-between">
                     <h2 className="text-2xl font-bold">{myProfile.name}</h2>
@@ -471,8 +448,6 @@ export default function Dashboard() {
                       </span>
                     ))}
                   </div>
-                  
-                  {/* Links Section */}
                   {(myProfile.linkedin || myProfile.github) && (
                     <div className="space-y-2">
                       <h3 className="text-sm font-medium text-[#B3B3B3]">Links:</h3>
@@ -488,7 +463,6 @@ export default function Dashboard() {
                       )}
                     </div>
                   )}
-                  
                   <div className="flex gap-3 pt-4">
                     <button
                       className={`px-4 py-2 rounded-lg text-white transition-colors ${
@@ -537,9 +511,8 @@ export default function Dashboard() {
               )}
             </div>
           )}
-
           {/* USER PROFILE VIEW */}
-          {activeTab === "userProfile" && selectedUserProfile && (
+          {!loading && activeTab === "userProfile" && selectedUserProfile && (
             <div className="flex items-center justify-center">
               <div className="w-full max-w-3xl bg-[#141414] p-10 rounded-2xl shadow-2xl border border-gray-800">
                 {/* Back Button */}
@@ -550,7 +523,6 @@ export default function Dashboard() {
                   <ArrowLeft size={20} />
                   Back to Feed
                 </button>
-
                 {/* Header */}
                 <div className="flex flex-col items-center text-center mb-8">
                   {/* Avatar */}
@@ -564,7 +536,6 @@ export default function Dashboard() {
                     {selectedUserProfile.year || "Year not specified"} • {selectedUserProfile.roles?.[0] || "Role not specified"}
                   </p>
                 </div>
-
                 {/* Profile Details */}
                 <div className="space-y-8">
                   {/* Email */}
@@ -572,7 +543,6 @@ export default function Dashboard() {
                     <h2 className="text-sm font-medium text-gray-400">College Email</h2>
                     <p className="text-white mt-1">{selectedUserProfile.collegeMail || "Email not provided"}</p>
                   </div>
-
                   {/* Tech Stack */}
                   <div className="p-4 rounded-xl bg-[#1C1C1C] border border-gray-700 hover:border-purple-500 transition">
                     <h2 className="text-sm font-medium text-gray-400">Tech Stack</h2>
@@ -591,7 +561,6 @@ export default function Dashboard() {
                       )}
                     </div>
                   </div>
-
                   {/* Roles */}
                   {selectedUserProfile.roles && selectedUserProfile.roles.length > 0 && (
                     <div className="p-4 rounded-xl bg-[#1C1C1C] border border-gray-700 hover:border-purple-500 transition">
@@ -608,7 +577,6 @@ export default function Dashboard() {
                       </div>
                     </div>
                   )}
-
                   {/* Links */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="p-4 rounded-xl bg-[#1C1C1C] border border-gray-700 hover:border-purple-500 transition">
@@ -642,7 +610,6 @@ export default function Dashboard() {
                       )}
                     </div>
                   </div>
-
                   {/* Bio */}
                   <div className="p-4 rounded-xl bg-[#1C1C1C] border border-gray-700 hover:border-purple-500 transition">
                     <h2 className="text-sm font-medium text-gray-400">Bio</h2>
@@ -650,7 +617,6 @@ export default function Dashboard() {
                       {selectedUserProfile.bio || "No bio provided."}
                     </p>
                   </div>
-
                   {/* Action Button */}
                   <div className="flex justify-center pt-4">
                     <button
@@ -666,7 +632,6 @@ export default function Dashboard() {
           )}
         </div>
       </div>
-
     </div>
   );
 }
