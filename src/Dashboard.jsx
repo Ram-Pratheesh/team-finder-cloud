@@ -40,6 +40,7 @@ const teamMembers = [
 const Loader = () => (
   <div className="flex flex-col items-center justify-center py-10" aria-label="Loading...">
     <LoaderIcon className="animate-spin text-[#A259FF]" size={48} strokeWidth={3} />
+    
     <span className="mt-4 text-[#B3B3B3] text-base font-medium">Loading...</span>
   </div>
 );
@@ -393,7 +394,7 @@ export default function Dashboard() {
             }`}
             onClick={() => setActiveTab("profile")}
           >
-            My Profile
+            Post Yourself
           </button>
         </div>
       )}
