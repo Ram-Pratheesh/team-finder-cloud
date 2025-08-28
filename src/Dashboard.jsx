@@ -1,6 +1,6 @@
 // src/pages/Dashboard.jsx
 import React, { useState, useEffect } from "react";
-import { ExternalLink, ArrowLeft, MapPin, Calendar, Code, User, Star, Sparkles, Heart, Loader as LoaderIcon } from "lucide-react";
+import { ExternalLink, ArrowLeft, MapPin, Calendar, Code, User, Star, Sparkles, Heart, Loader as LoaderIcon, ChevronDown } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import API_URL from "./config";
 
@@ -9,6 +9,7 @@ const csSkills = [
   "TypeScript","Angular","Vue.js","PHP","Ruby","Go","Rust","Swift","Kotlin",
   "Solidity","Blockchain","Machine Learning","Data Science","DevOps","AWS","Docker","Kubernetes"
 ];
+
 const roles = [
   "Frontend Developer",
   "Backend Developer",
@@ -25,6 +26,14 @@ const roles = [
   "Game Developer",
   "Embedded Systems Engineer",
   "Other"
+];
+
+// Team members data
+const teamMembers = [
+  { name: "Priyaranjan", linkedin: "https://www.linkedin.com/in/priyaranjan-d-a-b436002a2?utm_source=share&utm_campaign=share_via&utm_content=profile&utm_medium=android_app" },
+  { name: "Ram", linkedin: "https://www.linkedin.com/in/rampratheeshsk?utm_source=share&utm_campaign=share_via&utm_content=profile&utm_medium=android_app" },
+  { name: "Praveen", linkedin: "https://www.linkedin.com/in/praveen-somasundaram2005?utm_source=share&utm_campaign=share_via&utm_content=profile&utm_medium=android_app" },
+  { name: "Pranaav", linkedin: "https://www.linkedin.com/in/pranaav-kumar?utm_source=share&utm_campaign=share_via&utm_content=profile&utm_medium=android_app" }
 ];
 
 // Loader Component using Lucide Loader
@@ -44,7 +53,9 @@ export default function Dashboard() {
   const [searchRole, setSearchRole] = useState("");
   const [activeTab, setActiveTab] = useState("feed");
   const [loading, setLoading] = useState(false);
+  const [isTeamDropdownOpen, setIsTeamDropdownOpen] = useState(false);
   const navigate = useNavigate();
+
   const loggedInEmail = sessionStorage.getItem("email");
 
   // Fetch all posted profiles for feed
@@ -87,7 +98,6 @@ export default function Dashboard() {
       if (response.ok) {
         const data = await response.json();
         setMyProfile(data);
-
         if (data._id && !sessionStorage.getItem("userId")) {
           sessionStorage.setItem("userId", data._id);
         }
@@ -125,6 +135,7 @@ export default function Dashboard() {
     const matchesRole = searchRole
       ? user.roles?.some((r) => r.toLowerCase().includes(searchRole.toLowerCase()))
       : true;
+
     return matchesUsername && matchesSkill && matchesRole;
   });
 
@@ -136,15 +147,18 @@ export default function Dashboard() {
       setActiveTab("userProfile");
     }
   };
+
   const handleBackToFeed = () => {
     setSelectedUserProfile(null);
     setActiveTab("feed");
   };
+
   const handlePostProfile = async () => {
     if (!myProfile?._id) {
       alert("Profile not found!");
       return;
     }
+
     try {
       const response = await fetch(`${API_URL}/profile/${myProfile._id}/post`, {
         method: 'PATCH',
@@ -152,6 +166,7 @@ export default function Dashboard() {
           'Content-Type': 'application/json',
         },
       });
+
       if (response.ok) {
         const updatedProfile = await response.json();
         setMyProfile(updatedProfile);
@@ -165,12 +180,15 @@ export default function Dashboard() {
       alert("Error posting profile");
     }
   };
+
   const handleEditProfile = () => navigate("/ProfileSetUp");
+
   const handleDeleteProfile = async () => {
     if (!myProfile?._id) {
       alert("Profile not found!");
       return;
     }
+
     try {
       const response = await fetch(`${API_URL}/profile/${myProfile._id}/unpost`, {
         method: 'PATCH',
@@ -178,6 +196,7 @@ export default function Dashboard() {
           'Content-Type': 'application/json',
         },
       });
+
       if (response.ok) {
         const updatedProfile = await response.json();
         setMyProfile(updatedProfile);
@@ -190,6 +209,10 @@ export default function Dashboard() {
       console.error("Error removing profile:", error);
       alert("Error removing profile");
     }
+  };
+
+  const handleTeamMemberClick = (linkedinUrl) => {
+    window.open(linkedinUrl, '_blank', 'noopener,noreferrer');
   };
 
   // Enhanced Profile Card Component
@@ -220,12 +243,14 @@ export default function Dashboard() {
             </p>
           </div>
         </div>
+
         {/* Bio Section */}
         <div className="mb-4">
           <p className="text-[#B3B3B3] text-sm leading-relaxed line-clamp-2">
             {user.bio || "Passionate developer ready to collaborate on exciting projects!"}
           </p>
         </div>
+
         {/* Roles Section */}
         <div className="mb-4">
           <h4 className="text-xs font-medium text-[#888] mb-2 flex items-center gap-1">
@@ -248,6 +273,7 @@ export default function Dashboard() {
             )}
           </div>
         </div>
+
         {/* Tech Stack Section */}
         <div className="mb-6">
           <h4 className="text-xs font-medium text-[#888] mb-2 flex items-center gap-1">
@@ -270,6 +296,7 @@ export default function Dashboard() {
             )}
           </div>
         </div>
+
         {/* Action Button */}
         <div className="flex justify-end">
           <button
@@ -295,16 +322,56 @@ export default function Dashboard() {
           overflow: hidden;
         }
       `}</style>
-      {/* Team Branding Header - Simple text at the top */}
+
+      {/* Team Branding Header with TeamX Dropdown */}
       <div className="w-full bg-[#1A1A1A] border-b border-[#333] py-3">
         <div className="max-w-5xl mx-auto px-4">
           <div className="flex items-center justify-center">
-            <span className="text-sm font-medium text-[#B3B3B3]">
-              Designed and Crafted by Kodambakkam Coders
-            </span>
+            <div className="relative">
+              <button
+                onClick={() => setIsTeamDropdownOpen(!isTeamDropdownOpen)}
+                className="flex items-center gap-2 text-sm font-medium text-[#B3B3B3] hover:text-[#A259FF] transition-colors cursor-pointer"
+              >
+                Designed and Crafted by TeamX
+                <ChevronDown 
+                  size={16} 
+                  className={`transition-transform duration-200 ${isTeamDropdownOpen ? 'rotate-180' : ''}`}
+                />
+              </button>
+              
+              {/* Dropdown Menu */}
+              {isTeamDropdownOpen && (
+                <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 w-48 bg-[#2A2A2A] border border-[#333] rounded-lg shadow-lg z-50">
+                  <div className="py-2">
+                    {teamMembers.map((member, index) => (
+                      <button
+                        key={index}
+                        onClick={() => {
+                          handleTeamMemberClick(member.linkedin);
+                          setIsTeamDropdownOpen(false);
+                        }}
+                        className="w-full px-4 py-2 text-left text-sm text-[#B3B3B3] hover:text-[#A259FF] hover:bg-[#333] transition-colors flex items-center justify-between"
+                      >
+                        {member.name}
+                        <ExternalLink size={12} />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
+
+      {/* Click outside to close dropdown */}
+      {isTeamDropdownOpen && (
+        <div 
+          className="fixed inset-0 z-40" 
+          onClick={() => setIsTeamDropdownOpen(false)}
+        />
+      )}
+
       {/* Tabs - Hide when viewing user profile */}
       {activeTab !== "userProfile" && (
         <div className="flex gap-2 mb-8 p-1 rounded-lg mt-6 mx-auto max-w-2xl w-full bg-[#1A1A1A]">
@@ -354,6 +421,7 @@ export default function Dashboard() {
                     className="bg-[#0D0D0D] border border-[#333] text-white p-3 rounded-lg w-full focus:border-[#A259FF] focus:ring-1 focus:ring-[#A259FF] transition-all duration-300"
                   />
                 </div>
+
                 {/* Skill filter with datalist */}
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-[#B3B3B3]">
@@ -373,6 +441,7 @@ export default function Dashboard() {
                     ))}
                   </datalist>
                 </div>
+
                 {/* Role filter with datalist */}
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-[#B3B3B3]">
@@ -393,6 +462,7 @@ export default function Dashboard() {
                   </datalist>
                 </div>
               </div>
+
               {/* Feed cards */}
               <div className="space-y-6">
                 {filteredUsers.length === 0 ? (
@@ -411,6 +481,7 @@ export default function Dashboard() {
               </div>
             </div>
           )}
+
           {/* MY PROFILE TAB */}
           {!loading && activeTab === "profile" && (
             <div>
@@ -511,6 +582,7 @@ export default function Dashboard() {
               )}
             </div>
           )}
+
           {/* USER PROFILE VIEW */}
           {!loading && activeTab === "userProfile" && selectedUserProfile && (
             <div className="flex items-center justify-center">
@@ -523,6 +595,7 @@ export default function Dashboard() {
                   <ArrowLeft size={20} />
                   Back to Feed
                 </button>
+
                 {/* Header */}
                 <div className="flex flex-col items-center text-center mb-8">
                   {/* Avatar */}
@@ -536,6 +609,7 @@ export default function Dashboard() {
                     {selectedUserProfile.year || "Year not specified"} • {selectedUserProfile.roles?.[0] || "Role not specified"}
                   </p>
                 </div>
+
                 {/* Profile Details */}
                 <div className="space-y-8">
                   {/* Email */}
@@ -543,6 +617,7 @@ export default function Dashboard() {
                     <h2 className="text-sm font-medium text-gray-400">College Email</h2>
                     <p className="text-white mt-1">{selectedUserProfile.collegeMail || "Email not provided"}</p>
                   </div>
+
                   {/* Tech Stack */}
                   <div className="p-4 rounded-xl bg-[#1C1C1C] border border-gray-700 hover:border-purple-500 transition">
                     <h2 className="text-sm font-medium text-gray-400">Tech Stack</h2>
@@ -561,6 +636,7 @@ export default function Dashboard() {
                       )}
                     </div>
                   </div>
+
                   {/* Roles */}
                   {selectedUserProfile.roles && selectedUserProfile.roles.length > 0 && (
                     <div className="p-4 rounded-xl bg-[#1C1C1C] border border-gray-700 hover:border-purple-500 transition">
@@ -577,6 +653,7 @@ export default function Dashboard() {
                       </div>
                     </div>
                   )}
+
                   {/* Links */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="p-4 rounded-xl bg-[#1C1C1C] border border-gray-700 hover:border-purple-500 transition">
@@ -610,6 +687,7 @@ export default function Dashboard() {
                       )}
                     </div>
                   </div>
+
                   {/* Bio */}
                   <div className="p-4 rounded-xl bg-[#1C1C1C] border border-gray-700 hover:border-purple-500 transition">
                     <h2 className="text-sm font-medium text-gray-400">Bio</h2>
@@ -617,6 +695,7 @@ export default function Dashboard() {
                       {selectedUserProfile.bio || "No bio provided."}
                     </p>
                   </div>
+
                   {/* Action Button */}
                   <div className="flex justify-center pt-4">
                     <button

@@ -4,13 +4,12 @@ import API_URL from "./config";
 
 function SignupPage() {
   const navigate = useNavigate();
-
   const [form, setForm] = useState({
     email: "",
     password: "",
   });
-
   const [errors, setErrors] = useState({});
+  const [loading, setLoading] = useState(false); // 🔥 Loader state
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -29,35 +28,34 @@ function SignupPage() {
   };
 
   const handleSubmit = async (e) => {
-  e.preventDefault();
-  const v = validate();
-  setErrors(v);
-  if (Object.keys(v).length) return;
+    e.preventDefault();
+    const v = validate();
+    setErrors(v);
+    if (Object.keys(v).length) return;
 
-  try {
-    const response = await fetch(`${API_URL}/auth/signup`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(form),
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      alert(data.message || "Signup failed");
-      return;
+    setLoading(true); // 🔥 Start loader
+    try {
+      const response = await fetch(`${API_URL}/auth/signup`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(form),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        alert(data.message || "Signup failed");
+        return;
+      }
+      alert("Signup successful!");
+      navigate("/login");
+    } catch (error) {
+      console.error("Signup error:", error);
+      alert("Something went wrong. Try again.");
+    } finally {
+      setLoading(false); // 🔥 Stop loader
     }
-
-    alert("Signup successful!");
-    navigate("/login");
-  } catch (error) {
-    console.error("Signup error:", error);
-    alert("Something went wrong. Try again.");
-  }
-};
-
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4 bg-[#0D0D0D]">
@@ -70,7 +68,6 @@ function SignupPage() {
             SIH-Team Finder
           </span>
         </h1>
-
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Email */}
           <div>
@@ -87,7 +84,6 @@ function SignupPage() {
               <p className="text-xs text-red-500 mt-1">{errors.email}</p>
             )}
           </div>
-
           {/* Password */}
           <div>
             <label className="text-sm text-gray-300">Password</label>
@@ -103,15 +99,42 @@ function SignupPage() {
               <p className="text-xs text-red-500 mt-1">{errors.password}</p>
             )}
           </div>
-
           {/* Submit */}
           <button
             type="submit"
-            className="w-full bg-purple-500 hover:bg-purple-600 text-black font-bold py-3 rounded-xl shadow-lg transition"
+            disabled={loading} // 🔥 Disable while loading
+            className={`w-full flex items-center justify-center bg-purple-500 hover:bg-purple-600 text-black font-bold py-3 rounded-xl shadow-lg transition ${
+              loading ? "opacity-70 cursor-not-allowed" : ""
+            }`}
           >
-            Create Account
+            {loading ? (
+              <div className="flex items-center space-x-2">
+                <svg
+                  className="animate-spin h-5 w-5 text-black"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  ></circle>
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8v8z"
+                  ></path>
+                </svg>
+                <span>Creating...</span>
+              </div>
+            ) : (
+              "Create Account"
+            )}
           </button>
-
           {/* Log in link */}
           <p className="text-center text-sm text-gray-400 mt-3">
             Already have an account?{" "}
