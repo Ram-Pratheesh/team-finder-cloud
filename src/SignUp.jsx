@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import API_URL from "./config";
+import { Eye, EyeOff } from "lucide-react"; // 👁 icons
 
 function SignupPage() {
   const navigate = useNavigate();
@@ -13,6 +14,7 @@ function SignupPage() {
   const [errors, setErrors] = useState({});
   const [otpVerified, setOtpVerified] = useState(false); // ✅ safeguard
   const [otpMessage, setOtpMessage] = useState(""); // ✅ for spam check note
+  const [showPassword, setShowPassword] = useState(false); // 👁 toggle
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -141,15 +143,14 @@ function SignupPage() {
           {loading ? "Sending OTP..." : "Request OTP"}
         </button>
         {otpMessage && (
-  <p className="text-xs text-yellow-400 mb-3">
-    OTP sent to your email. Please also check your{" "}
-    <span className="animate-spam text-yellow-400 font-bold">
-      Spam/Junk 
-    </span>{" "}
-    in the mail
-  </p>
-)}
-
+          <p className="text-xs text-yellow-400 mb-3">
+            OTP sent to your email. Please also check your{" "}
+            <span className="animate-spam text-yellow-400 font-bold">
+              Spam/Junk
+            </span>{" "}
+            in the mail
+          </p>
+        )}
 
         {/* OTP */}
         <label className="text-sm text-gray-300">OTP</label>
@@ -174,14 +175,23 @@ function SignupPage() {
 
         {/* Password */}
         <label className="text-sm text-gray-300">Password</label>
-        <input
-          type="password"
-          name="password"
-          value={form.password}
-          onChange={handleChange}
-          placeholder="Set your password"
-          className="w-full p-3 bg-[#0F0F0F] border border-gray-700 text-white rounded-lg mb-2"
-        />
+        <div className="relative mb-2">
+          <input
+            type={showPassword ? "text" : "password"}
+            name="password"
+            value={form.password}
+            onChange={handleChange}
+            placeholder="Set your password"
+            className="w-full p-3 bg-[#0F0F0F] border border-gray-700 text-white rounded-lg pr-10"
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword((prev) => !prev)}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
+          >
+            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+          </button>
+        </div>
         {errors.password && (
           <p className="text-xs text-red-500">{errors.password}</p>
         )}
