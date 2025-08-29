@@ -40,7 +40,6 @@ const teamMembers = [
 const Loader = () => (
   <div className="flex flex-col items-center justify-center py-10" aria-label="Loading...">
     <LoaderIcon className="animate-spin text-[#A259FF]" size={48} strokeWidth={3} />
-    
     <span className="mt-4 text-[#B3B3B3] text-base font-medium">Loading...</span>
   </div>
 );
@@ -59,36 +58,92 @@ export default function Dashboard() {
 
   const loggedInEmail = sessionStorage.getItem("email");
 
+  // Utility function to get auth headers
+  const getAuthHeaders = () => {
+    const token = sessionStorage.getItem("token") || sessionStorage.getItem("authToken");
+    
+    const headers = {
+      'Content-Type': 'application/json',
+    };
+
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    return headers;
+  };
+
+  // Check if token is expired (basic check)
+  const isTokenExpired = (token) => {
+    if (!token) return true;
+    
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      const currentTime = Date.now() / 1000;
+      return payload.exp < currentTime;
+    } catch (error) {
+      return true;
+    }
+  };
+
+  // Utility function to check if user is authenticated
+  const validateToken = () => {
+    const token = sessionStorage.getItem("token") || sessionStorage.getItem("authToken");
+    
+    if (!token) {
+      alert("Please login to continue");
+      navigate("/login");
+      return false;
+    }
+
+    if (isTokenExpired(token)) {
+      sessionStorage.clear();
+      alert("Session expired. Please login again.");
+      navigate("/login");
+      return false;
+    }
+
+    return true;
+  };
+
   // Fetch all posted profiles for feed
-  const fetchPostedProfiles = () => {
+  const fetchPostedProfiles = async () => {
     setLoading(true);
-    fetch(`${API_URL}/profile/posted/all`)
-      .then((res) => res.json())
-      .then((data) => {
+    try {
+      const headers = getAuthHeaders();
+
+      const response = await fetch(`${API_URL}/profile/posted/all`, {
+        method: 'GET',
+        headers: headers,
+        credentials: 'include',
+      });
+
+      if (response.ok) {
+        const data = await response.json();
         const filteredProfiles = data.profiles?.filter(
           (user) => user.collegeMail !== loggedInEmail
         ) || [];
         setUsersData(filteredProfiles);
-        setLoading(false);
-      })
-      .catch((err) => {
-        console.error("Failed to fetch posted profiles:", err);
-        setLoading(false);
-      });
+      } else {
+        if (response.status === 401) {
+          sessionStorage.clear();
+          alert("Session expired. Please login again.");
+          navigate("/login");
+          return;
+        }
+        setUsersData([]);
+      }
+    } catch (err) {
+      setUsersData([]);
+    }
+    setLoading(false);
   };
 
-  // Fetch my profile data - UPDATED VERSION WITH AUTH
+  // Fetch my profile data
   const fetchMyProfile = async () => {
     setLoading(true);
     try {
-      const token = sessionStorage.getItem("token") || sessionStorage.getItem("authToken");
-      const headers = {
-        'Content-Type': 'application/json',
-      };
-
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
+      const headers = getAuthHeaders();
 
       const response = await fetch(`${API_URL}/profile/me`, {
         method: 'GET',
@@ -103,23 +158,25 @@ export default function Dashboard() {
           sessionStorage.setItem("userId", data._id);
         }
       } else {
-        console.error("Failed to fetch profile:", response.status);
         if (response.status === 401) {
-          // Optionally redirect to login page
-          // navigate("/login");
+          sessionStorage.clear();
+          alert("Session expired. Please login again.");
+          navigate("/login");
+          return;
         }
         setMyProfile(null);
       }
     } catch (err) {
-      console.error("Error fetching profile:", err);
       setMyProfile(null);
     }
     setLoading(false);
   };
 
   useEffect(() => {
-    fetchPostedProfiles();
-    fetchMyProfile();
+    if (validateToken()) {
+      fetchPostedProfiles();
+      fetchMyProfile();
+    }
     // eslint-disable-next-line
   }, [loggedInEmail]);
 
@@ -160,12 +217,13 @@ export default function Dashboard() {
       return;
     }
 
+    if (!validateToken()) return;
+
     try {
       const response = await fetch(`${API_URL}/profile/${myProfile._id}/post`, {
         method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: getAuthHeaders(),
+        credentials: 'include',
       });
 
       if (response.ok) {
@@ -174,10 +232,15 @@ export default function Dashboard() {
         fetchPostedProfiles();
         alert("Profile posted successfully!");
       } else {
-        alert("Failed to post profile");
+        if (response.status === 401) {
+          sessionStorage.clear();
+          alert("Session expired. Please log in again.");
+          navigate("/login");
+        } else {
+          alert("Failed to post profile");
+        }
       }
     } catch (error) {
-      console.error("Error posting profile:", error);
       alert("Error posting profile");
     }
   };
@@ -190,12 +253,13 @@ export default function Dashboard() {
       return;
     }
 
+    if (!validateToken()) return;
+
     try {
       const response = await fetch(`${API_URL}/profile/${myProfile._id}/unpost`, {
         method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: getAuthHeaders(),
+        credentials: 'include',
       });
 
       if (response.ok) {
@@ -204,10 +268,15 @@ export default function Dashboard() {
         fetchPostedProfiles();
         alert("Profile removed from public feed!");
       } else {
-        alert("Failed to remove profile from feed");
+        if (response.status === 401) {
+          sessionStorage.clear();
+          alert("Session expired. Please log in again.");
+          navigate("/login");
+        } else {
+          alert("Failed to remove profile from feed");
+        }
       }
     } catch (error) {
-      console.error("Error removing profile:", error);
       alert("Error removing profile");
     }
   };
@@ -215,7 +284,6 @@ export default function Dashboard() {
   const handleTeamMemberClick = (linkedinUrl) => {
     window.open(linkedinUrl, '_blank', 'noopener,noreferrer');
   };
-
   // Enhanced Profile Card Component
   const ProfileCard = ({ user, index }) => {
     return (
@@ -483,106 +551,146 @@ export default function Dashboard() {
             </div>
           )}
 
-          {/* MY PROFILE TAB */}
-          {!loading && activeTab === "profile" && (
-            <div>
-              {myProfile ? (
-                <div className="p-6 rounded-xl border border-[#333] bg-[#1A1A1A] space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h2 className="text-2xl font-bold">{myProfile.name}</h2>
-                    <div className="flex items-center gap-2">
-                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                        myProfile.isPosted 
-                          ? 'bg-green-500/20 text-green-400 border border-green-500/30' 
-                          : 'bg-gray-500/20 text-gray-400 border border-gray-500/30'
-                      }`}>
-                        {myProfile.isPosted ? 'Posted' : 'Not Posted'}
-                      </span>
-                    </div>
-                  </div>
-                  <p className="text-[#B3B3B3]">{myProfile.bio}</p>
-                  <p className="text-sm text-[#888]">
-                    Year: {myProfile.year || "Not specified"}
-                  </p>
-                  <p className="text-sm text-[#888]">
-                    Email: {myProfile.collegeMail}
-                  </p>
-                  <p className="text-sm text-[#888]">
-                    Roles: {myProfile.roles?.join(", ") || "Not specified"}
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {myProfile.techStacks?.map((s, index) => (
-                      <span
-                        key={`${s}-${index}`}
-                        className="px-3 py-1 text-xs rounded-full bg-[#0D0D0D] text-[#A259FF] border border-[#333]"
-                      >
-                        {s}
-                      </span>
-                    ))}
-                  </div>
-                  {(myProfile.linkedin || myProfile.github) && (
-                    <div className="space-y-2">
-                      <h3 className="text-sm font-medium text-[#B3B3B3]">Links:</h3>
-                      {myProfile.linkedin && (
-                        <p className="text-sm text-[#888]">
-                          LinkedIn: <a href={myProfile.linkedin} target="_blank" rel="noopener noreferrer" className="text-[#A259FF] hover:underline">{myProfile.linkedin}</a>
-                        </p>
-                      )}
-                      {myProfile.github && (
-                        <p className="text-sm text-[#888]">
-                          GitHub: <a href={myProfile.github} target="_blank" rel="noopener noreferrer" className="text-[#A259FF] hover:underline">{myProfile.github}</a>
-                        </p>
-                      )}
-                    </div>
-                  )}
-                  <div className="flex gap-3 pt-4">
-                    <button
-                      className={`px-4 py-2 rounded-lg text-white transition-colors ${
-                        myProfile.isPosted 
-                          ? 'bg-gray-600 hover:bg-gray-700 cursor-not-allowed' 
-                          : 'bg-[#A259FF] hover:bg-[#8B3EF2]'
-                      }`}
-                      onClick={handlePostProfile}
-                      disabled={myProfile.isPosted}
-                    >
-                      {myProfile.isPosted ? 'Already Posted' : 'Post My Profile'}
-                    </button>
-                    <button
-                      className="px-4 py-2 rounded-lg bg-[#2A2A2A] hover:bg-[#333] text-white transition-colors"
-                      onClick={handleEditProfile}
-                    >
-                      Edit Profile
-                    </button>
-                    <button
-                      className={`px-4 py-2 rounded-lg text-white transition-colors ${
-                        myProfile.isPosted 
-                          ? 'bg-red-600 hover:bg-red-700' 
-                          : 'bg-gray-600 hover:bg-gray-700 cursor-not-allowed'
-                      }`}
-                      onClick={handleDeleteProfile}
-                      disabled={!myProfile.isPosted}
-                    >
-                      {myProfile.isPosted ? 'Remove from Feed' : 'Not Posted'}
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="p-6 rounded-xl border border-[#333] bg-[#1A1A1A] text-center">
-                  <div className="w-24 h-24 mx-auto mb-4 rounded-full bg-gradient-to-r from-[#A259FF]/20 to-[#8B3EF2]/20 flex items-center justify-center">
-                    <User size={32} className="text-[#A259FF]" />
-                  </div>
-                  <h3 className="text-xl font-semibold text-[#B3B3B3] mb-2">Profile not found</h3>
-                  <p className="text-[#888] mb-4">Unable to load your profile. Please try refreshing the page or check your connection.</p>
-                  <button
-                    onClick={fetchMyProfile}
-                    className="px-4 py-2 bg-[#A259FF] hover:bg-[#8B3EF2] text-white rounded-lg transition-colors"
-                  >
-                    Try Again
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
+         {/* MY PROFILE TAB */}
+{!loading && activeTab === "profile" && (
+  <div>
+    {myProfile ? (
+      <div className="p-4 sm:p-6 rounded-xl border border-[#333] bg-[#1A1A1A] space-y-4 max-w-full overflow-hidden">
+        
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+          <h2 className="text-xl sm:text-2xl font-bold break-words">{myProfile.name}</h2>
+          <div className="flex items-center gap-2">
+            <span
+              className={`px-3 py-1 rounded-full text-xs font-medium ${
+                myProfile.isPosted
+                  ? "bg-green-500/20 text-green-400 border border-green-500/30"
+                  : "bg-gray-500/20 text-gray-400 border border-gray-500/30"
+              }`}
+            >
+              {myProfile.isPosted ? "Posted" : "Not Posted"}
+            </span>
+          </div>
+        </div>
+
+        {/* Bio */}
+        <p className="text-[#B3B3B3] break-words">{myProfile.bio}</p>
+
+        {/* Details */}
+        <p className="text-sm text-[#888] break-words">
+          Year: {myProfile.year || "Not specified"}
+        </p>
+        <p className="text-sm text-[#888] break-words">
+          Email: {myProfile.collegeMail}
+        </p>
+        <p className="text-sm text-[#888] break-words">
+          Roles: {myProfile.roles?.join(", ") || "Not specified"}
+        </p>
+
+        {/* Tech Stack */}
+        <div className="flex flex-wrap gap-2">
+          {myProfile.techStacks?.map((s, index) => (
+            <span
+              key={`${s}-${index}`}
+              className="px-3 py-1 text-xs rounded-full bg-[#0D0D0D] text-[#A259FF] border border-[#333] break-words"
+            >
+              {s}
+            </span>
+          ))}
+        </div>
+
+        {/* Links */}
+        {(myProfile.linkedin || myProfile.github) && (
+          <div className="space-y-2 max-w-full">
+            <h3 className="text-sm font-medium text-[#B3B3B3]">Links:</h3>
+
+            {myProfile.linkedin && (
+              <p className="text-sm text-[#888] break-words">
+                LinkedIn:{" "}
+                <a
+                  href={myProfile.linkedin}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[#A259FF] hover:underline break-all max-w-full block"
+                >
+                  {myProfile.linkedin}
+                </a>
+              </p>
+            )}
+
+            {myProfile.github && (
+              <p className="text-sm text-[#888] break-words">
+                GitHub:{" "}
+                <a
+                  href={myProfile.github}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[#A259FF] hover:underline break-all max-w-full block"
+                >
+                  {myProfile.github}
+                </a>
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* Action Buttons */}
+        <div className="flex flex-wrap gap-3 pt-4">
+          <button
+            className={`px-4 py-2 rounded-lg text-white transition-colors ${
+              myProfile.isPosted
+                ? "bg-gray-600 hover:bg-gray-700 cursor-not-allowed"
+                : "bg-[#A259FF] hover:bg-[#8B3EF2]"
+            }`}
+            onClick={handlePostProfile}
+            disabled={myProfile.isPosted}
+          >
+            {myProfile.isPosted ? "Already Posted" : "Post My Profile"}
+          </button>
+
+          <button
+            className="px-4 py-2 rounded-lg bg-[#2A2A2A] hover:bg-[#333] text-white transition-colors"
+            onClick={handleEditProfile}
+          >
+            Edit Profile
+          </button>
+
+          <button
+            className={`px-4 py-2 rounded-lg text-white transition-colors ${
+              myProfile.isPosted
+                ? "bg-red-600 hover:bg-red-700"
+                : "bg-gray-600 hover:bg-gray-700 cursor-not-allowed"
+            }`}
+            onClick={handleDeleteProfile}
+            disabled={!myProfile.isPosted}
+          >
+            {myProfile.isPosted ? "Remove from Feed" : "Not Posted"}
+          </button>
+        </div>
+      </div>
+    ) : (
+      /* No Profile Found State */
+      <div className="p-6 rounded-xl border border-[#333] bg-[#1A1A1A] text-center max-w-full overflow-hidden">
+        <div className="w-24 h-24 mx-auto mb-4 rounded-full bg-gradient-to-r from-[#A259FF]/20 to-[#8B3EF2]/20 flex items-center justify-center">
+          <User size={32} className="text-[#A259FF]" />
+        </div>
+        <h3 className="text-xl font-semibold text-[#B3B3B3] mb-2">
+          Profile not found
+        </h3>
+        <p className="text-[#888] mb-4">
+          Unable to load your profile. Please try refreshing the page or check
+          your connection.
+        </p>
+        <button
+          onClick={fetchMyProfile}
+          className="px-4 py-2 bg-[#A259FF] hover:bg-[#8B3EF2] text-white rounded-lg transition-colors"
+        >
+          Try Again
+        </button>
+      </div>
+    )}
+  </div>
+)}
 
           {/* USER PROFILE VIEW */}
           {!loading && activeTab === "userProfile" && selectedUserProfile && (
