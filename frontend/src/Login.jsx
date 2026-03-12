@@ -41,8 +41,8 @@ function LoginPage() {
 
   const validate = () => {
     const errs = {};
-    if (!form.email.endsWith("rajalakshmi.edu.in")) {
-      errs.email = "Use your college email (@rajalakshmi.edu.in)";
+    if (!form.email && !form.email.includes('@')) {
+      errs.email = "Enter a valid email address";
     }
     if (!form.password) {
       errs.password = "Password is required";
@@ -74,15 +74,18 @@ function LoginPage() {
         return;
       }
 
-      // Save token + email + userId in sessionStorage
+      // Save token + email + userId + role in sessionStorage
       sessionStorage.setItem("token", data.token);
       sessionStorage.setItem("email", data.user.email);
       sessionStorage.setItem("userId", data.user.id);
+      sessionStorage.setItem("role", data.user.role || "user");
 
       alert("Login successful!");
 
-      // Keep loader shown during navigation
-      if (data.user.isProfileComplete) {
+      // Redirect based on role
+      if (data.user.role === "admin") {
+        navigate("/admin");
+      } else if (data.user.isProfileComplete) {
         navigate("/dashboard");
       } else {
         navigate("/ProfileSetUp");

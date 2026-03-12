@@ -3,7 +3,9 @@ import SignupPage from "./SignUp";
 import LoginPage from "./Login";
 import ProfileSetUp from "./ProfileSetUp";
 import Dashboard from "./Dashboard";
-import PrivateRoute from "./components/PrivateRoute"; // 👈 new file
+import AdminPanel from "./AdminPanel";
+import PrivateRoute from "./components/PrivateRoute";
+import AdminRoute from "./components/AdminRoute";
 
 function App() {
   return (
@@ -25,6 +27,16 @@ function App() {
               </PrivateRoute>
             }
           />
+
+          {/* Admin route */}
+          <Route
+            path="/admin"
+            element={
+              <AdminRoute>
+                <AdminPanel />
+              </AdminRoute>
+            }
+          />
         </Routes>
       </div>
     </Router>
@@ -32,3 +44,4 @@ function App() {
 }
 
 export default App;
+
