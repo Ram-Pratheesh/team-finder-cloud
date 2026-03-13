@@ -675,18 +675,25 @@ export default function Dashboard() {
           <User size={32} className="text-[#A259FF]" />
         </div>
         <h3 className="text-xl font-semibold text-[#B3B3B3] mb-2">
-          Profile not found
+          Profile not set up yet
         </h3>
         <p className="text-[#888] mb-4">
-          Unable to load your profile. Please try refreshing the page or check
-          your connection.
+          It looks like you haven't completed your profile setup. Click below to edit or try refreshing.
         </p>
-        <button
-          onClick={fetchMyProfile}
-          className="px-4 py-2 bg-[#A259FF] hover:bg-[#8B3EF2] text-white rounded-lg transition-colors"
-        >
-          Try Again
-        </button>
+        <div className="flex gap-4 justify-center">
+          <button
+            onClick={fetchMyProfile}
+            className="px-4 py-2 bg-[#2A2A2A] hover:bg-[#333] text-white rounded-lg transition-colors border border-[#333]"
+          >
+            Refresh
+          </button>
+          <button
+            onClick={handleEditProfile}
+            className="px-4 py-2 bg-[#A259FF] hover:bg-[#8B3EF2] text-white rounded-lg transition-colors"
+          >
+            Setup Profile
+          </button>
+        </div>
       </div>
     )}
   </div>
