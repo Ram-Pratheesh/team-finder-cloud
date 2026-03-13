@@ -35,9 +35,10 @@ export default function AdminPanel() {
   const fetchData = async () => {
     setLoading(true);
     try {
+      const headers = getAuthHeaders();
       const [usersRes, statsRes] = await Promise.all([
-        fetch(`${API_URL}/admin/users`, { headers: getAuthHeaders() }),
-        fetch(`${API_URL}/admin/stats`, { headers: getAuthHeaders() }),
+        fetch(`${API_URL}/admin/users`, { headers }),
+        fetch(`${API_URL}/admin/stats`, { headers }),
       ]);
 
       if (usersRes.status === 401 || usersRes.status === 403) {
@@ -50,9 +51,22 @@ export default function AdminPanel() {
       const statsData = await statsRes.json();
 
       setUsers(usersData.users || []);
-      setStats(statsData);
+      // Ensure statsData is an object even if the response is empty
+      setStats(statsData || {
+        totalUsers: 0,
+        totalProfiles: 0,
+        postedProfiles: 0,
+        bannedUsers: 0
+      });
     } catch (err) {
       console.error("Failed to fetch admin data:", err);
+      // Initialize with zeros on error to avoid null display
+      setStats({
+        totalUsers: 0,
+        totalProfiles: 0,
+        postedProfiles: 0,
+        bannedUsers: 0
+      });
     }
     setLoading(false);
   };
