@@ -101,14 +101,12 @@ export default function Dashboard() {
     const token = sessionStorage.getItem("token") || sessionStorage.getItem("authToken");
 
     if (!token) {
-      alert("Please login to continue");
       navigate("/login");
       return false;
     }
 
     if (isTokenExpired(token)) {
       sessionStorage.clear();
-      alert("Session expired. Please login again.");
       navigate("/login");
       return false;
     }
@@ -137,7 +135,6 @@ export default function Dashboard() {
       } else {
         if (response.status === 401) {
           sessionStorage.clear();
-          alert("Session expired. Please login again.");
           navigate("/login");
           return;
         }
@@ -175,7 +172,6 @@ export default function Dashboard() {
       } else {
         if (response.status === 401) {
           sessionStorage.clear();
-          alert("Session expired. Please login again.");
           navigate("/login");
           return;
         }
@@ -366,7 +362,7 @@ export default function Dashboard() {
         }
       }
     } catch (error) {
-      alert("Error posting profile");
+      console.error("Error posting profile");
     }
   };
 
@@ -402,7 +398,7 @@ export default function Dashboard() {
         }
       }
     } catch (error) {
-      alert("Error removing profile");
+      console.error("Error removing profile");
     }
   };
 

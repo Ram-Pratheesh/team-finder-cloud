@@ -175,7 +175,7 @@ const ProfileSetUp = () => {
     }
   } catch (error) {
     console.error("⚠ Error creating profile:", error);
-    alert("Error creating profile");
+    console.error("Error creating profile");
   } finally {
     setLoading(false);
   }

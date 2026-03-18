@@ -31,6 +31,7 @@ function LoginPage() {
   });
 
   const [errors, setErrors] = useState({});
+  const [loginError, setLoginError] = useState("");
   const [loading, setLoading] = useState(false); // loader state
   const [showPassword, setShowPassword] = useState(false); // password visibility toggle
 
@@ -69,8 +70,8 @@ function LoginPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        alert(data.message || "Login failed");
-        setLoading(false); // Hide Loader
+        setLoginError(data.message || "Login failed");
+        setLoading(false);
         return;
       }
 
@@ -80,8 +81,6 @@ function LoginPage() {
       sessionStorage.setItem("userId", data.user.id);
       sessionStorage.setItem("role", data.user.role || "user");
 
-      alert("Login successful!");
-
       // Redirect based on role
       if (data.user.role === "admin") {
         navigate("/admin");
@@ -90,11 +89,10 @@ function LoginPage() {
       } else {
         navigate("/ProfileSetUp");
       }
-      // No setLoading(false) here — loader stays until route changes
     } catch (error) {
       console.error("Login error:", error);
-      alert("Something went wrong. Try again.");
-      setLoading(false); // Hide Loader on error
+      setLoginError("Something went wrong. Try again.");
+      setLoading(false);
     }
   };
 
@@ -156,6 +154,11 @@ function LoginPage() {
                   <p className="text-xs text-red-500 mt-1">{errors.password}</p>
                 )}
               </div>
+
+              {/* Error Message */}
+              {loginError && (
+                <p className="text-sm text-red-500 text-center -mt-2">{loginError}</p>
+              )}
 
               {/* Submit */}
               <button

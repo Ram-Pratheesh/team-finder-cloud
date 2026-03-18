@@ -57,7 +57,7 @@ function SignupPage() {
       ); // ✅ spam check note
       setOtpVerified(false); // reset OTP status if re-requested
     } catch (err) {
-      alert(err.message);
+      setErrors({ email: err.message });
     } finally {
       setLoading(false);
     }
@@ -79,10 +79,9 @@ function SignupPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "OTP verification failed");
 
-      alert("OTP verified successfully.");
       setOtpVerified(true); // ✅ allow signup
     } catch (err) {
-      alert(err.message);
+      setErrors({ otp: err.message });
     } finally {
       setLoading(false);
     }
@@ -103,10 +102,9 @@ function SignupPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Signup failed");
 
-      alert("Signup successful! Please log in.");
       navigate("/login");
     } catch (err) {
-      alert(err.message);
+      setErrors({ password: err.message });
     } finally {
       setLoading(false);
     }

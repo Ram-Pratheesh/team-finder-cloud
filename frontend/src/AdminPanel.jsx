@@ -83,9 +83,9 @@ export default function AdminPanel() {
         headers: getAuthHeaders(),
       });
       if (res.ok) fetchData();
-      else alert("Failed to ban user");
+      else console.error("Failed to ban user");
     } catch {
-      alert("Error banning user");
+      console.error("Error banning user");
     }
     setConfirmAction(null);
   };
@@ -97,9 +97,9 @@ export default function AdminPanel() {
         headers: getAuthHeaders(),
       });
       if (res.ok) fetchData();
-      else alert("Failed to unban user");
+      else console.error("Failed to unban user");
     } catch {
-      alert("Error unbanning user");
+      console.error("Error unbanning user");
     }
     setConfirmAction(null);
   };
@@ -111,9 +111,9 @@ export default function AdminPanel() {
         headers: getAuthHeaders(),
       });
       if (res.ok) fetchData();
-      else alert("Failed to delete user");
+      else console.error("Failed to delete user");
     } catch {
-      alert("Error deleting user");
+      console.error("Error deleting user");
     }
     setConfirmAction(null);
   };
