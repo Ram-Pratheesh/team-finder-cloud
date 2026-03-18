@@ -118,7 +118,7 @@ function SignupPage() {
         <h1 className="text-3xl font-bold mb-6 text-gray-100 text-center">
           Welcome to <br />
           <span className="text-purple-400 font-extrabold tracking-wide">
-            SIH-Team Finder
+            REC Team Finder
           </span>
         </h1>
 
@@ -200,11 +200,10 @@ function SignupPage() {
         <button
           onClick={completeSignup}
           disabled={!otpVerified || loading} // ✅ blocked until verified
-          className={`w-full font-bold py-2 rounded-lg ${
-            otpVerified
-              ? "bg-purple-500 hover:bg-purple-600 text-black"
-              : "bg-gray-500 text-gray-300 cursor-not-allowed"
-          }`}
+          className={`w-full font-bold py-2 rounded-lg ${otpVerified
+            ? "bg-purple-500 hover:bg-purple-600 text-black"
+            : "bg-gray-500 text-gray-300 cursor-not-allowed"
+            }`}
         >
           {loading ? "Creating Account..." : "Complete Signup"}
         </button>

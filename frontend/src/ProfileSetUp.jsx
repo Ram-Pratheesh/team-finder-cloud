@@ -8,9 +8,17 @@ const ProfileSetUp = () => {
   const [inputStack, setInputStack] = useState("");
   const [rolesSelected, setRolesSelected] = useState([]);
   const [otherRole, setOtherRole] = useState("");
+  
+  // Controlled inputs for text fields
+  const [name, setName] = useState("");
   const [collegeMail, setCollegeMail] = useState("");
   const [selectedYear, setSelectedYear] = useState("");
+  const [linkedin, setLinkedin] = useState("");
+  const [github, setGithub] = useState("");
+  const [bio, setBio] = useState("");
+  
   const [loading, setLoading] = useState(false); // loading state
+  const [fetchingProfile, setFetchingProfile] = useState(true);
 
   // Determine year based on email
   const determineYearFromEmail = (email) => {
@@ -29,14 +37,61 @@ const ProfileSetUp = () => {
     }
   };
 
-  // Load email from sessionStorage
   useEffect(() => {
-    const savedEmail = sessionStorage.getItem("email");
-    if (savedEmail) {
-      setCollegeMail(savedEmail);
-      const autoDetectedYear = determineYearFromEmail(savedEmail);
-      setSelectedYear(autoDetectedYear);
-    }
+    const loadProfileData = async () => {
+      // Set email from session storage as fallback
+      const savedEmail = sessionStorage.getItem("email");
+      if (savedEmail) {
+        setCollegeMail(savedEmail);
+        setSelectedYear(determineYearFromEmail(savedEmail));
+      }
+
+      // Fetch existing profile if it exists
+      try {
+        const token = sessionStorage.getItem("token");
+        if (!token) return;
+
+        const response = await fetch(`${API_URL}/profile/me`, {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        });
+
+        if (response.ok) {
+          const profileData = await response.json();
+          if (profileData && profileData._id) {
+            setName(profileData.name || "");
+            if (profileData.collegeMail) setCollegeMail(profileData.collegeMail);
+            if (profileData.year) setSelectedYear(profileData.year);
+            setTechStacks(profileData.techStacks || []);
+            
+            // Handle roles and 'Other' role filtering
+            if (profileData.roles) {
+              const standardRoles = ["Frontend Developer", "Backend Developer", "Full Stack Developer", "Designer", "Machine Learning Engineer", "AI Engineer", "Cyber Security Engineer"];
+              const userStandardRoles = profileData.roles.filter(r => standardRoles.includes(r));
+              const customRoles = profileData.roles.filter(r => !standardRoles.includes(r));
+              
+              if (customRoles.length > 0) {
+                userStandardRoles.push("Other");
+                setOtherRole(customRoles[0]);
+              }
+              setRolesSelected(userStandardRoles);
+            }
+
+            setLinkedin(profileData.linkedin || "");
+            setGithub(profileData.github || "");
+            setBio(profileData.bio || "");
+          }
+        }
+      } catch (err) {
+        console.error("Failed to load existing profile", err);
+      } finally {
+        setFetchingProfile(false);
+      }
+    };
+
+    loadProfileData();
   }, []);
 
   const availableStacks = [
@@ -137,6 +192,11 @@ const ProfileSetUp = () => {
           Let others know more about you
         </h2>
 
+        {fetchingProfile ? (
+          <div className="flex justify-center items-center py-20">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
+          </div>
+        ) : (
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Name */}
           <div>
@@ -145,6 +205,8 @@ const ProfileSetUp = () => {
               type="text"
               name="name"
               required
+              value={name}
+              onChange={(e) => setName(e.target.value)}
               className="w-full p-3 bg-[#0F0F0F] border border-gray-700 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
             />
           </div>
@@ -264,6 +326,8 @@ const ProfileSetUp = () => {
               type="url"
               name="linkedin"
               required
+              value={linkedin}
+              onChange={(e) => setLinkedin(e.target.value)}
               placeholder="https://linkedin.com/in/username"
               className="w-full p-3 bg-[#0F0F0F] border border-gray-700 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
             />
@@ -275,6 +339,8 @@ const ProfileSetUp = () => {
             <input
               type="url"
               name="github"
+              value={github}
+              onChange={(e) => setGithub(e.target.value)}
               placeholder="https://github.com/username"
               className="w-full p-3 bg-[#0F0F0F] border border-gray-700 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
             />
@@ -286,6 +352,8 @@ const ProfileSetUp = () => {
             <textarea
               name="bio"
               rows="3"
+              value={bio}
+              onChange={(e) => setBio(e.target.value)}
               placeholder="Tell us a little about yourself..."
               className="w-full p-3 bg-[#0F0F0F] border border-gray-700 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
             ></textarea>
@@ -302,6 +370,7 @@ const ProfileSetUp = () => {
             {loading ? "Saving..." : "Save Profile"}
           </button>
         </form>
+        )}
       </div>
     </div>
   );

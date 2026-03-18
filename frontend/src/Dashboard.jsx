@@ -1,13 +1,14 @@
 // src/pages/Dashboard.jsx
 import React, { useState, useEffect } from "react";
-import { ExternalLink, ArrowLeft, MapPin, Calendar, Code, User, Star, Sparkles, Heart, Loader as LoaderIcon, ChevronDown } from "lucide-react";
+import { ExternalLink, ArrowLeft, MapPin, Calendar, Code, User, Star, Sparkles, Heart, Loader as LoaderIcon, ChevronDown, MessageCircle, Send, LogOut } from "lucide-react";
+import { HubConnectionBuilder, LogLevel } from "@microsoft/signalr";
 import { useNavigate } from "react-router-dom";
 import API_URL from "./config";
 
 const csSkills = [
-  "React","JavaScript","HTML","CSS","Node.js","Python","Java","C++","C#",
-  "TypeScript","Angular","Vue.js","PHP","Ruby","Go","Rust","Swift","Kotlin",
-  "Solidity","Blockchain","Machine Learning","Data Science","DevOps","AWS","Docker","Kubernetes"
+  "React", "JavaScript", "HTML", "CSS", "Node.js", "Python", "Java", "C++", "C#",
+  "TypeScript", "Angular", "Vue.js", "PHP", "Ruby", "Go", "Rust", "Swift", "Kotlin",
+  "Solidity", "Blockchain", "Machine Learning", "Data Science", "DevOps", "AWS", "Docker", "Kubernetes"
 ];
 
 const roles = [
@@ -32,8 +33,8 @@ const roles = [
 const teamMembers = [
   { name: "Priyaranjan", linkedin: "https://www.linkedin.com/in/priyaranjan-d-a-b436002a2?utm_source=share&utm_campaign=share_via&utm_content=profile&utm_medium=android_app" },
   { name: "Ram", linkedin: "https://www.linkedin.com/in/rampratheeshsk?utm_source=share&utm_campaign=share_via&utm_content=profile&utm_medium=android_app" },
-  { name: "Praveen", linkedin: "https://www.linkedin.com/in/praveen-somasundaram2005?utm_source=share&utm_campaign=share_via&utm_content=profile&utm_medium=android_app" },
-  { name: "Pranaav", linkedin: "https://www.linkedin.com/in/pranaav-kumar?utm_source=share&utm_campaign=share_via&utm_content=profile&utm_medium=android_app" }
+
+  { name: "Parvath", linkedin: "https://www.linkedin.com/in/parvath-raj/" }
 ];
 
 // Loader Component using Lucide Loader
@@ -54,6 +55,15 @@ export default function Dashboard() {
   const [activeTab, setActiveTab] = useState("feed");
   const [loading, setLoading] = useState(false);
   const [isTeamDropdownOpen, setIsTeamDropdownOpen] = useState(false);
+
+  // Chat States
+  const [conversations, setConversations] = useState([]);
+  const [activeChatUser, setActiveChatUser] = useState(null);
+  const [chatMessages, setChatMessages] = useState([]);
+  const [newMessage, setNewMessage] = useState("");
+  const [hubConnection, setHubConnection] = useState(null);
+  const [isChatLoading, setIsChatLoading] = useState(false);
+
   const navigate = useNavigate();
 
   const loggedInEmail = sessionStorage.getItem("email");
@@ -61,7 +71,7 @@ export default function Dashboard() {
   // Utility function to get auth headers
   const getAuthHeaders = () => {
     const token = sessionStorage.getItem("token") || sessionStorage.getItem("authToken");
-    
+
     const headers = {
       'Content-Type': 'application/json',
     };
@@ -76,7 +86,7 @@ export default function Dashboard() {
   // Check if token is expired (basic check)
   const isTokenExpired = (token) => {
     if (!token) return true;
-    
+
     try {
       const payload = JSON.parse(atob(token.split('.')[1]));
       const currentTime = Date.now() / 1000;
@@ -89,7 +99,7 @@ export default function Dashboard() {
   // Utility function to check if user is authenticated
   const validateToken = () => {
     const token = sessionStorage.getItem("token") || sessionStorage.getItem("authToken");
-    
+
     if (!token) {
       alert("Please login to continue");
       navigate("/login");
@@ -139,6 +149,11 @@ export default function Dashboard() {
     setLoading(false);
   };
 
+  const handleLogout = () => {
+    sessionStorage.clear();
+    navigate("/login");
+  };
+
   // Fetch my profile data
   const fetchMyProfile = async () => {
     setLoading(true);
@@ -180,6 +195,116 @@ export default function Dashboard() {
     // eslint-disable-next-line
   }, [loggedInEmail]);
 
+  // Connect to Azure SignalR
+  useEffect(() => {
+    let connection = null;
+
+    const connectSignalR = async () => {
+      if (!validateToken()) return;
+      try {
+        const negotiateResponse = await fetch(`${API_URL}/chat/negotiate`, {
+          method: 'POST',
+          headers: getAuthHeaders()
+        });
+
+        if (negotiateResponse.ok) {
+          const { url, accessToken } = await negotiateResponse.json();
+          connection = new HubConnectionBuilder()
+            .withUrl(url, { accessTokenFactory: () => accessToken })
+            .configureLogging(LogLevel.Information)
+            .build();
+
+          // Listen to generic messages
+          connection.on("ReceiveMessage", (msg) => {
+            setChatMessages((prev) => [...prev, msg]);
+            // Refresh conversations list to show latest message
+            fetchConversations();
+          });
+
+          await connection.start();
+          setHubConnection(connection);
+        }
+      } catch (err) {
+        console.error("SignalR Connection Error: ", err);
+      }
+    };
+
+    if (myProfile?._id) {
+      connectSignalR();
+    }
+
+    return () => {
+      if (connection) {
+        connection.stop();
+      }
+    };
+  }, [myProfile?._id]);
+
+  // Fetch Conversations List
+  const fetchConversations = async () => {
+    try {
+      const response = await fetch(`${API_URL}/chat/conversations`, {
+        headers: getAuthHeaders()
+      });
+      if (response.ok) {
+        setConversations(await response.json());
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === "chats") {
+      fetchConversations();
+    }
+  }, [activeTab]);
+
+  // Fetch Message History
+  const fetchChatHistory = async (otherUserId) => {
+    setIsChatLoading(true);
+    try {
+      const response = await fetch(`${API_URL}/chat/messages/${otherUserId}`, {
+        headers: getAuthHeaders()
+      });
+      if (response.ok) {
+        setChatMessages(await response.json());
+      }
+    } catch (err) {
+      console.error(err);
+    }
+    setIsChatLoading(false);
+  };
+
+  const handleOpenChat = (user) => {
+    setActiveChatUser(user);
+    setActiveTab("chatBox");
+    fetchChatHistory(user.userId || user.otherUserId);
+  };
+
+  const handleSendMessage = async () => {
+    if (!newMessage.trim() || !activeChatUser) return;
+    try {
+      const targetUserId = activeChatUser.userId || activeChatUser.otherUserId;
+      const response = await fetch(`${API_URL}/chat/messages`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          receiverId: targetUserId,
+          content: newMessage
+        })
+      });
+      if (response.ok) {
+        const savedMsg = await response.json();
+        setChatMessages((prev) => [...prev, savedMsg]);
+        setNewMessage("");
+        fetchConversations();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   // Filtered feed
   const filteredUsers = usersData.filter((user) => {
     const matchesUsername = user.name
@@ -187,8 +312,8 @@ export default function Dashboard() {
       .includes(searchUsername.toLowerCase());
     const matchesSkill = searchSkill
       ? user.techStacks?.some((s) =>
-          s.toLowerCase().includes(searchSkill.toLowerCase())
-        )
+        s.toLowerCase().includes(searchSkill.toLowerCase())
+      )
       : true;
     const matchesRole = searchRole
       ? user.roles?.some((r) => r.toLowerCase().includes(searchRole.toLowerCase()))
@@ -395,19 +520,23 @@ export default function Dashboard() {
       {/* Team Branding Header with TeamX Dropdown */}
       <div className="w-full bg-[#1A1A1A] border-b border-[#333] py-3">
         <div className="max-w-5xl mx-auto px-4">
-          <div className="flex items-center justify-center">
-            <div className="relative">
+          <div className="flex items-center justify-between">
+            {/* Left Spacer */}
+            <div className="w-24"></div>
+
+            {/* Centered Team Dropdown */}
+            <div className="relative flex justify-center flex-1">
               <button
                 onClick={() => setIsTeamDropdownOpen(!isTeamDropdownOpen)}
                 className="flex items-center gap-2 text-sm font-medium text-[#B3B3B3] hover:text-[#A259FF] transition-colors cursor-pointer"
               >
                 Designed and Crafted by TeamX
-                <ChevronDown 
-                  size={16} 
+                <ChevronDown
+                  size={16}
                   className={`transition-transform duration-200 ${isTeamDropdownOpen ? 'rotate-180' : ''}`}
                 />
               </button>
-              
+
               {/* Dropdown Menu */}
               {isTeamDropdownOpen && (
                 <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 w-48 bg-[#2A2A2A] border border-[#333] rounded-lg shadow-lg z-50">
@@ -429,14 +558,25 @@ export default function Dashboard() {
                 </div>
               )}
             </div>
+
+            {/* Right Logout Button */}
+            <div className="w-24 flex justify-end">
+              <button
+                onClick={handleLogout}
+                className="flex items-center gap-2 text-sm font-medium text-red-500 hover:text-red-400 transition-colors"
+              >
+                <LogOut size={16} />
+                Logout
+              </button>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Click outside to close dropdown */}
       {isTeamDropdownOpen && (
-        <div 
-          className="fixed inset-0 z-40" 
+        <div
+          className="fixed inset-0 z-40"
           onClick={() => setIsTeamDropdownOpen(false)}
         />
       )}
@@ -445,24 +585,31 @@ export default function Dashboard() {
       {activeTab !== "userProfile" && (
         <div className="flex gap-2 mb-8 p-1 rounded-lg mt-6 mx-auto max-w-2xl w-full bg-[#1A1A1A]">
           <button
-            className={`flex-1 px-6 py-3 rounded-md font-semibold transition-all ${
-              activeTab === "feed"
-                ? "bg-[#A259FF] text-white"
-                : "text-[#B3B3B3] hover:text-white hover:bg-[#2A2A2A]"
-            }`}
+            className={`flex-1 px-6 py-3 rounded-md font-semibold transition-all ${activeTab === "feed"
+              ? "bg-[#A259FF] text-white"
+              : "text-[#B3B3B3] hover:text-white hover:bg-[#2A2A2A]"
+              }`}
             onClick={() => setActiveTab("feed")}
           >
             Feed
           </button>
           <button
-            className={`flex-1 px-6 py-3 rounded-md font-semibold transition-all ${
-              activeTab === "profile"
-                ? "bg-[#A259FF] text-white"
-                : "text-[#B3B3B3] hover:text-white hover:bg-[#2A2A2A]"
-            }`}
+            className={`flex-1 px-6 py-3 rounded-md font-semibold transition-all ${activeTab === "profile"
+              ? "bg-[#A259FF] text-white"
+              : "text-[#B3B3B3] hover:text-white hover:bg-[#2A2A2A]"
+              }`}
             onClick={() => setActiveTab("profile")}
           >
             Post Yourself
+          </button>
+          <button
+            className={`flex-1 px-6 py-3 rounded-md font-semibold transition-all ${activeTab === "chats"
+              ? "bg-[#A259FF] text-white"
+              : "text-[#B3B3B3] hover:text-white hover:bg-[#2A2A2A]"
+              }`}
+            onClick={() => setActiveTab("chats")}
+          >
+            Chats
           </button>
         </div>
       )}
@@ -551,153 +698,150 @@ export default function Dashboard() {
             </div>
           )}
 
-         {/* MY PROFILE TAB */}
-{!loading && activeTab === "profile" && (
-  <div>
-    {myProfile ? (
-      <div className="p-4 sm:p-6 rounded-xl border border-[#333] bg-[#1A1A1A] space-y-4 max-w-full overflow-hidden">
-        
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-          <h2 className="text-xl sm:text-2xl font-bold break-words">{myProfile.name}</h2>
-          <div className="flex items-center gap-2">
-            <span
-              className={`px-3 py-1 rounded-full text-xs font-medium ${
-                myProfile.isPosted
-                  ? "bg-green-500/20 text-green-400 border border-green-500/30"
-                  : "bg-gray-500/20 text-gray-400 border border-gray-500/30"
-              }`}
-            >
-              {myProfile.isPosted ? "Posted" : "Not Posted"}
-            </span>
-          </div>
-        </div>
+          {/* MY PROFILE TAB */}
+          {!loading && activeTab === "profile" && (
+            <div>
+              {myProfile ? (
+                <div className="p-4 sm:p-6 rounded-xl border border-[#333] bg-[#1A1A1A] space-y-4 max-w-full overflow-hidden">
 
-        {/* Bio */}
-        <p className="text-[#B3B3B3] break-words">{myProfile.bio}</p>
+                  {/* Header */}
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                    <h2 className="text-xl sm:text-2xl font-bold break-words">{myProfile.name}</h2>
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`px-3 py-1 rounded-full text-xs font-medium ${myProfile.isPosted
+                          ? "bg-green-500/20 text-green-400 border border-green-500/30"
+                          : "bg-gray-500/20 text-gray-400 border border-gray-500/30"
+                          }`}
+                      >
+                        {myProfile.isPosted ? "Posted" : "Not Posted"}
+                      </span>
+                    </div>
+                  </div>
 
-        {/* Details */}
-        <p className="text-sm text-[#888] break-words">
-          Year: {myProfile.year || "Not specified"}
-        </p>
-        <p className="text-sm text-[#888] break-words">
-          Email: {myProfile.collegeMail}
-        </p>
-        <p className="text-sm text-[#888] break-words">
-          Roles: {myProfile.roles?.join(", ") || "Not specified"}
-        </p>
+                  {/* Bio */}
+                  <p className="text-[#B3B3B3] break-words">{myProfile.bio}</p>
 
-        {/* Tech Stack */}
-        <div className="flex flex-wrap gap-2">
-          {myProfile.techStacks?.map((s, index) => (
-            <span
-              key={`${s}-${index}`}
-              className="px-3 py-1 text-xs rounded-full bg-[#0D0D0D] text-[#A259FF] border border-[#333] break-words"
-            >
-              {s}
-            </span>
-          ))}
-        </div>
+                  {/* Details */}
+                  <p className="text-sm text-[#888] break-words">
+                    Year: {myProfile.year || "Not specified"}
+                  </p>
+                  <p className="text-sm text-[#888] break-words">
+                    Email: {myProfile.collegeMail}
+                  </p>
+                  <p className="text-sm text-[#888] break-words">
+                    Roles: {myProfile.roles?.join(", ") || "Not specified"}
+                  </p>
 
-        {/* Links */}
-        {(myProfile.linkedin || myProfile.github) && (
-          <div className="space-y-2 max-w-full">
-            <h3 className="text-sm font-medium text-[#B3B3B3]">Links:</h3>
+                  {/* Tech Stack */}
+                  <div className="flex flex-wrap gap-2">
+                    {myProfile.techStacks?.map((s, index) => (
+                      <span
+                        key={`${s}-${index}`}
+                        className="px-3 py-1 text-xs rounded-full bg-[#0D0D0D] text-[#A259FF] border border-[#333] break-words"
+                      >
+                        {s}
+                      </span>
+                    ))}
+                  </div>
 
-            {myProfile.linkedin && (
-              <p className="text-sm text-[#888] break-words">
-                LinkedIn:{" "}
-                <a
-                  href={myProfile.linkedin}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-[#A259FF] hover:underline break-all max-w-full block"
-                >
-                  {myProfile.linkedin}
-                </a>
-              </p>
-            )}
+                  {/* Links */}
+                  {(myProfile.linkedin || myProfile.github) && (
+                    <div className="space-y-2 max-w-full">
+                      <h3 className="text-sm font-medium text-[#B3B3B3]">Links:</h3>
 
-            {myProfile.github && (
-              <p className="text-sm text-[#888] break-words">
-                GitHub:{" "}
-                <a
-                  href={myProfile.github}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-[#A259FF] hover:underline break-all max-w-full block"
-                >
-                  {myProfile.github}
-                </a>
-              </p>
-            )}
-          </div>
-        )}
+                      {myProfile.linkedin && (
+                        <p className="text-sm text-[#888] break-words">
+                          LinkedIn:{" "}
+                          <a
+                            href={myProfile.linkedin}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-[#A259FF] hover:underline break-all max-w-full block"
+                          >
+                            {myProfile.linkedin}
+                          </a>
+                        </p>
+                      )}
 
-        {/* Action Buttons */}
-        <div className="flex flex-wrap gap-3 pt-4">
-          <button
-            className={`px-4 py-2 rounded-lg text-white transition-colors ${
-              myProfile.isPosted
-                ? "bg-gray-600 hover:bg-gray-700 cursor-not-allowed"
-                : "bg-[#A259FF] hover:bg-[#8B3EF2]"
-            }`}
-            onClick={handlePostProfile}
-            disabled={myProfile.isPosted}
-          >
-            {myProfile.isPosted ? "Already Posted" : "Post My Profile"}
-          </button>
+                      {myProfile.github && (
+                        <p className="text-sm text-[#888] break-words">
+                          GitHub:{" "}
+                          <a
+                            href={myProfile.github}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-[#A259FF] hover:underline break-all max-w-full block"
+                          >
+                            {myProfile.github}
+                          </a>
+                        </p>
+                      )}
+                    </div>
+                  )}
 
-          <button
-            className="px-4 py-2 rounded-lg bg-[#2A2A2A] hover:bg-[#333] text-white transition-colors"
-            onClick={handleEditProfile}
-          >
-            Edit Profile
-          </button>
+                  {/* Action Buttons */}
+                  <div className="flex flex-wrap gap-3 pt-4">
+                    <button
+                      className={`px-4 py-2 rounded-lg text-white transition-colors ${myProfile.isPosted
+                        ? "bg-gray-600 hover:bg-gray-700 cursor-not-allowed"
+                        : "bg-[#A259FF] hover:bg-[#8B3EF2]"
+                        }`}
+                      onClick={handlePostProfile}
+                      disabled={myProfile.isPosted}
+                    >
+                      {myProfile.isPosted ? "Already Posted" : "Post My Profile"}
+                    </button>
 
-          <button
-            className={`px-4 py-2 rounded-lg text-white transition-colors ${
-              myProfile.isPosted
-                ? "bg-red-600 hover:bg-red-700"
-                : "bg-gray-600 hover:bg-gray-700 cursor-not-allowed"
-            }`}
-            onClick={handleDeleteProfile}
-            disabled={!myProfile.isPosted}
-          >
-            {myProfile.isPosted ? "Remove from Feed" : "Not Posted"}
-          </button>
-        </div>
-      </div>
-    ) : (
-      /* No Profile Found State */
-      <div className="p-6 rounded-xl border border-[#333] bg-[#1A1A1A] text-center max-w-full overflow-hidden">
-        <div className="w-24 h-24 mx-auto mb-4 rounded-full bg-gradient-to-r from-[#A259FF]/20 to-[#8B3EF2]/20 flex items-center justify-center">
-          <User size={32} className="text-[#A259FF]" />
-        </div>
-        <h3 className="text-xl font-semibold text-[#B3B3B3] mb-2">
-          Profile not set up yet
-        </h3>
-        <p className="text-[#888] mb-4">
-          It looks like you haven't completed your profile setup. Click below to edit or try refreshing.
-        </p>
-        <div className="flex gap-4 justify-center">
-          <button
-            onClick={fetchMyProfile}
-            className="px-4 py-2 bg-[#2A2A2A] hover:bg-[#333] text-white rounded-lg transition-colors border border-[#333]"
-          >
-            Refresh
-          </button>
-          <button
-            onClick={handleEditProfile}
-            className="px-4 py-2 bg-[#A259FF] hover:bg-[#8B3EF2] text-white rounded-lg transition-colors"
-          >
-            Setup Profile
-          </button>
-        </div>
-      </div>
-    )}
-  </div>
-)}
+                    <button
+                      className="px-4 py-2 rounded-lg bg-[#2A2A2A] hover:bg-[#333] text-white transition-colors"
+                      onClick={handleEditProfile}
+                    >
+                      Edit Profile
+                    </button>
+
+                    <button
+                      className={`px-4 py-2 rounded-lg text-white transition-colors ${myProfile.isPosted
+                        ? "bg-red-600 hover:bg-red-700"
+                        : "bg-gray-600 hover:bg-gray-700 cursor-not-allowed"
+                        }`}
+                      onClick={handleDeleteProfile}
+                      disabled={!myProfile.isPosted}
+                    >
+                      {myProfile.isPosted ? "Remove from Feed" : "Not Posted"}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                /* No Profile Found State */
+                <div className="p-6 rounded-xl border border-[#333] bg-[#1A1A1A] text-center max-w-full overflow-hidden">
+                  <div className="w-24 h-24 mx-auto mb-4 rounded-full bg-gradient-to-r from-[#A259FF]/20 to-[#8B3EF2]/20 flex items-center justify-center">
+                    <User size={32} className="text-[#A259FF]" />
+                  </div>
+                  <h3 className="text-xl font-semibold text-[#B3B3B3] mb-2">
+                    Profile not set up yet
+                  </h3>
+                  <p className="text-[#888] mb-4">
+                    It looks like you haven't completed your profile setup. Click below to edit or try refreshing.
+                  </p>
+                  <div className="flex gap-4 justify-center">
+                    <button
+                      onClick={fetchMyProfile}
+                      className="px-4 py-2 bg-[#2A2A2A] hover:bg-[#333] text-white rounded-lg transition-colors border border-[#333]"
+                    >
+                      Refresh
+                    </button>
+                    <button
+                      onClick={handleEditProfile}
+                      className="px-4 py-2 bg-[#A259FF] hover:bg-[#8B3EF2] text-white rounded-lg transition-colors"
+                    >
+                      Setup Profile
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* USER PROFILE VIEW */}
           {!loading && activeTab === "userProfile" && selectedUserProfile && (
@@ -813,14 +957,118 @@ export default function Dashboard() {
                   </div>
 
                   {/* Action Button */}
-                  <div className="flex justify-center pt-4">
+                  <div className="flex justify-center pt-4 gap-4">
                     <button
                       onClick={handleBackToFeed}
                       className="px-6 py-3 bg-[#2A2A2A] hover:bg-[#333] text-white rounded-lg font-semibold transition-colors"
                     >
                       Back to Feed
                     </button>
+                    {myProfile?._id !== selectedUserProfile._id && (
+                      <button
+                        onClick={() => handleOpenChat(selectedUserProfile)}
+                        className="px-6 py-3 bg-[#A259FF] hover:bg-[#8B3EF2] text-white rounded-lg font-semibold transition-colors flex items-center gap-2"
+                      >
+                        <MessageCircle size={18} />
+                        Chat
+                      </button>
+                    )}
                   </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* CHATS TAB */}
+          {!loading && activeTab === "chats" && (
+            <div className="w-full max-w-3xl mx-auto space-y-4">
+              <h2 className="text-2xl font-bold mb-6 text-white">Your Conversations</h2>
+              {conversations.length === 0 ? (
+                <div className="text-center py-12 bg-[#1A1A1A] rounded-xl border border-[#333]">
+                  <MessageCircle size={48} className="mx-auto text-[#B3B3B3] mb-4" />
+                  <p className="text-[#888]">No active chats yet. Go to Feed to start chatting with developers!</p>
+                </div>
+              ) : (
+                conversations.map((conv) => (
+                  <div
+                    key={conv.otherUserId}
+                    onClick={() => handleOpenChat(conv)}
+                    className="flex items-center gap-4 bg-[#1A1A1A] border border-[#333] rounded-xl p-4 cursor-pointer hover:border-[#A259FF]/50 transition-all"
+                  >
+                    <div className="w-12 h-12 rounded-full bg-gradient-to-r from-[#A259FF] to-purple-700 flex items-center justify-center text-xl font-bold text-white shrink-0">
+                      {conv.name?.charAt(0)?.toUpperCase()}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-semibold text-white truncate">{conv.name}</h4>
+                      <p className="text-sm text-[#888] truncate">{conv.latestMessage}</p>
+                    </div>
+                    <div className="text-xs text-[#555] shrink-0">
+                      {new Date(conv.timestamp).toLocaleDateString()}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+
+          {/* CHAT BOX VIEW */}
+          {!loading && activeTab === "chatBox" && activeChatUser && (
+            <div className="flex items-center justify-center">
+              <div className="w-full max-w-3xl bg-[#141414] rounded-2xl shadow-2xl border border-gray-800 flex flex-col h-[70vh]">
+                {/* Header */}
+                <div className="p-4 border-b border-gray-800 flex items-center gap-4 bg-[#1A1A1A] rounded-t-2xl">
+                  <button onClick={() => setActiveTab("chats")} className="text-[#A259FF] hover:text-purple-400">
+                    <ArrowLeft size={20} />
+                  </button>
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-r from-[#A259FF] to-purple-700 flex items-center justify-center font-bold text-white">
+                    {(activeChatUser.name || "U").charAt(0).toUpperCase()}
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-white">{activeChatUser.name}</h3>
+                    <p className="text-xs text-gray-500">{(activeChatUser.roles && activeChatUser.roles.length > 0) ? activeChatUser.roles[0] : "Developer"}</p>
+                  </div>
+                </div>
+
+                {/* Messages Area */}
+                <div className="flex-1 p-4 overflow-y-auto space-y-4 bg-[#0D0D0D]">
+                  {isChatLoading ? (
+                    <Loader />
+                  ) : chatMessages.length === 0 ? (
+                    <p className="text-center text-gray-500 mt-10">Start the conversation!</p>
+                  ) : (
+                    chatMessages.map((msg, idx) => {
+                      const isMe = msg.senderId === myProfile?.userId;
+                      return (
+                        <div key={idx} className={`flex ${isMe ? "justify-end" : "justify-start"}`}>
+                          <div className={`max-w-[75%] rounded-2xl px-4 py-2 ${isMe ? "bg-[#A259FF] text-white rounded-br-none" : "bg-[#2A2A2A] text-gray-200 rounded-bl-none"}`}>
+                            <p className="break-words text-sm">{msg.content}</p>
+                            <span className="text-[10px] opacity-70 mt-1 block text-right">
+                              {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+
+                {/* Input Area */}
+                <div className="p-4 bg-[#1A1A1A] border-t border-gray-800 rounded-b-2xl flex gap-2">
+                  <input
+                    type="text"
+                    value={newMessage}
+                    onChange={(e) => setNewMessage(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') handleSendMessage() }}
+                    placeholder="Type a message..."
+                    className="flex-1 bg-[#0D0D0D] border border-gray-700 rounded-xl px-4 py-2 text-white focus:outline-none focus:border-[#A259FF] transition-all"
+                  />
+                  <button
+                    onClick={handleSendMessage}
+                    disabled={!newMessage.trim()}
+                    className="p-3 bg-[#A259FF] hover:bg-[#8B3EF2] disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl transition-colors flex items-center justify-center"
+                  >
+                    <Send size={18} />
+                  </button>
                 </div>
               </div>
             </div>
