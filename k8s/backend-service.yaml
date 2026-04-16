@@ -1,0 +1,24 @@
+# ============================================================
+# Backend Service - Exposes the NestJS API internally
+# ============================================================
+# ClusterIP service: accessible only within the cluster.
+# The Ingress controller routes external traffic to this service.
+# ============================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: teamfinder-backend-svc
+  namespace: teamfinder
+  labels:
+    app: teamfinder
+    component: backend
+spec:
+  type: ClusterIP
+  selector:
+    app: teamfinder
+    component: backend
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+      protocol: TCP

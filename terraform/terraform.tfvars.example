@@ -1,0 +1,34 @@
+# ============================================================
+# Example Terraform Variables
+# ============================================================
+# Copy this file to terraform.tfvars and fill in your values.
+# DO NOT commit terraform.tfvars to version control!
+# ============================================================
+
+subscription_id = "your-azure-subscription-id-here"
+
+# Resource Group
+resource_group_name = "teamfinder-rg"
+location            = "Central India"
+environment         = "dev"
+
+# App Service
+app_service_plan_sku = "B1"
+backend_app_name     = "teamfinder"
+
+# Cosmos DB
+cosmosdb_account_name  = "ppr"
+cosmosdb_database_name = "teamfinder-db"
+
+# Container Registry
+acr_name = "teamfinderacr"
+acr_sku  = "Basic"
+
+# AKS
+aks_cluster_name = "teamfinder-aks"
+aks_node_count   = 2
+aks_vm_size      = "Standard_B2s"
+
+# SignalR
+signalr_name = "teamfinder-chat"
+signalr_sku  = "Free_F1"

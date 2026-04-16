@@ -1,0 +1,77 @@
+# ============================================================
+# Backend Deployment - NestJS API
+# ============================================================
+# Runs 2 replicas of the backend container for high availability.
+# Includes health checks, resource limits, and env configuration.
+# ============================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: teamfinder-backend
+  namespace: teamfinder
+  labels:
+    app: teamfinder
+    component: backend
+    tier: api
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: teamfinder
+      component: backend
+  template:
+    metadata:
+      labels:
+        app: teamfinder
+        component: backend
+        tier: api
+    spec:
+      containers:
+        - name: backend
+          image: teamfinderacr.azurecr.io/teamfinder-backend:latest
+          ports:
+            - containerPort: 8080
+              protocol: TCP
+          
+          # Environment variables from ConfigMap and Secret
+          envFrom:
+            - configMapRef:
+                name: teamfinder-config
+            - secretRef:
+                name: teamfinder-secrets
+          
+          # Resource limits and requests
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+          
+          # Liveness probe - restart container if unhealthy
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          
+          # Readiness probe - don't send traffic until ready
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 8080
+            initialDelaySeconds: 15
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+      
+      # Pull images from ACR using registry credentials
+      imagePullSecrets:
+        - name: acr-secret
+      
+      # Restart policy
+      restartPolicy: Always

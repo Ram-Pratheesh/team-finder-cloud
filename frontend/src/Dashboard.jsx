@@ -4,6 +4,7 @@ import { ExternalLink, ArrowLeft, MapPin, Calendar, Code, User, Star, Sparkles, 
 import { HubConnectionBuilder, LogLevel } from "@microsoft/signalr";
 import { useNavigate } from "react-router-dom";
 import API_URL from "./config";
+import AiAssistant from "./AiAssistant";
 
 const csSkills = [
   "React", "JavaScript", "HTML", "CSS", "Node.js", "Python", "Java", "C++", "C#",
@@ -1071,6 +1072,9 @@ export default function Dashboard() {
           )}
         </div>
       </div>
+
+      {/* AI Team Finder Chatbot */}
+      <AiAssistant />
     </div>
   );
 }
