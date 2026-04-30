@@ -62,7 +62,7 @@ export default function Dashboard() {
   const [activeChatUser, setActiveChatUser] = useState(null);
   const [chatMessages, setChatMessages] = useState([]);
   const [newMessage, setNewMessage] = useState("");
-  const [hubConnection, setHubConnection] = useState(null);
+  const [_hubConnection, setHubConnection] = useState(null);
   const [isChatLoading, setIsChatLoading] = useState(false);
 
   const navigate = useNavigate();
@@ -92,7 +92,7 @@ export default function Dashboard() {
       const payload = JSON.parse(atob(token.split('.')[1]));
       const currentTime = Date.now() / 1000;
       return payload.exp < currentTime;
-    } catch (error) {
+    } catch {
       return true;
     }
   };
@@ -141,7 +141,7 @@ export default function Dashboard() {
         }
         setUsersData([]);
       }
-    } catch (err) {
+    } catch {
       setUsersData([]);
     }
     setLoading(false);
@@ -178,7 +178,7 @@ export default function Dashboard() {
         }
         setMyProfile(null);
       }
-    } catch (err) {
+    } catch {
       setMyProfile(null);
     }
     setLoading(false);
@@ -235,6 +235,7 @@ export default function Dashboard() {
         connection.stop();
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [myProfile?._id]);
 
   // Fetch Conversations List
@@ -255,6 +256,7 @@ export default function Dashboard() {
     if (activeTab === "chats") {
       fetchConversations();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
 
   // Fetch Message History
@@ -320,7 +322,7 @@ export default function Dashboard() {
   });
 
   // Handlers
-  const handleViewProfile = (userId, username) => {
+  const handleViewProfile = (userId) => {
     const selectedUser = usersData.find(user => user._id === userId);
     if (selectedUser) {
       setSelectedUserProfile(selectedUser);
@@ -362,7 +364,7 @@ export default function Dashboard() {
           alert("Failed to post profile");
         }
       }
-    } catch (error) {
+    } catch {
       console.error("Error posting profile");
     }
   };
@@ -398,7 +400,7 @@ export default function Dashboard() {
           alert("Failed to remove profile from feed");
         }
       }
-    } catch (error) {
+    } catch {
       console.error("Error removing profile");
     }
   };
@@ -407,7 +409,7 @@ export default function Dashboard() {
     window.open(linkedinUrl, '_blank', 'noopener,noreferrer');
   };
   // Enhanced Profile Card Component
-  const ProfileCard = ({ user, index }) => {
+  const ProfileCard = ({ user }) => {
     return (
       <div
         className="group bg-[#1A1A1A] border border-[#333] rounded-xl p-6 hover:border-[#A259FF]/50 hover:bg-[#1F1F1F] transition-all duration-300"
